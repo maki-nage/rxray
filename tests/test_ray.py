@@ -15,7 +15,7 @@ def test_defaults():
 
     result = rx.from_(data).pipe(
         rxray.distribute(
-            rx.pipe(ops.map(lambda i: i*2)),
+            lambda: rx.pipe(ops.map(lambda i: i*2)),
         ),
         ops.to_list(),
     ).run()
@@ -24,13 +24,32 @@ def test_defaults():
     assert result == [i*2 for i in data]
 
 
+def test_factory_with_context():
+    data = range(200)
+    ray.init()
+
+    def factory(scale):
+        def _factory():
+            return rx.pipe(ops.map(lambda i: i*3))
+
+        return _factory
+
+    result = rx.from_(data).pipe(
+        rxray.distribute(factory(scale=3)),
+        ops.to_list(),
+    ).run()
+
+    ray.shutdown()
+    assert result == [i*3 for i in data]
+
+
 def test_rr_batch_multiple_actors():
     data = range(200)
     ray.init()
 
     result = rx.from_(data).pipe(
         rxray.distribute(
-            rx.pipe(ops.map(lambda i: i*2)),
+            lambda: rx.pipe(ops.map(lambda i: i*2)),
             actor_count=3,
             batch_size=16,
             queue_size=3),
@@ -47,7 +66,7 @@ def test_rr_batch_empty_on_completion():
 
     result = rx.from_(data).pipe(
         rxray.distribute(
-            rx.pipe(ops.map(lambda i: i*2)),
+            lambda: rx.pipe(ops.map(lambda i: i*2)),
             actor_count=3,
             batch_size=16,
             queue_size=3
@@ -66,7 +85,7 @@ def test_key_partitioning():
 
     result = rx.from_(data).pipe(
         rxray.distribute(            
-            rx.pipe(ops.map(lambda i: (i[0], i[1]*2))),
+            lambda: rx.pipe(ops.map(lambda i: (i[0], i[1]*2))),
             partition_selector=rxray.partition_by_key(lambda i: i[0]),
         ),
         ops.to_list(),
@@ -93,7 +112,7 @@ def test_completion():
 
     data.pipe(
         rxray.distribute(
-            rx.pipe(ops.take(1)),
+            lambda: rx.pipe(ops.take(1)),
             actor_count=2,
             queue_size=2,
         ),
@@ -122,7 +141,7 @@ def test_error():
 
     data.pipe(
         rxray.distribute(
-            rx.pipe(ops.map(lambda i: 1/i)),
+            lambda: rx.pipe(ops.map(lambda i: 1/i)),
             actor_count=2,
             queue_size=2,
         ),

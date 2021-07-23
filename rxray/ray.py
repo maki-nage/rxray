@@ -123,12 +123,13 @@ def partition_by_key(key_selector):
 
 @ray.remote
 class RemotePipeline(object):
-    def __init__(self, pipeline):
+    def __init__(self, pipeline_factory):
         self.subject = Subject()
         self.item_queue = []
 
+        pipe = pipeline_factory()
         self.disposable = self.subject.pipe(
-            pipeline,
+            pipe,
             ops.materialize(),
         ).subscribe(
             on_next=self.item_queue.append,
@@ -149,8 +150,8 @@ class RemotePipeline(object):
 
 
 class ActorState(object):
-    def __init__(self, pipeline, batch_size, queue_size):
-        self.actor = RemotePipeline.remote(pipeline)
+    def __init__(self, pipeline_factory, batch_size, queue_size):
+        self.actor = RemotePipeline.remote(pipeline_factory)
         self.queue_size = queue_size
         self.batch_size = batch_size
         self.batch = []
@@ -216,7 +217,7 @@ def compute_actor_count(requested_actor_count):
 
 
 def distribute(
-               pipeline,
+               pipeline_factory,
                partition_selector: Callable[[Any, int, Any], Tuple[int, Any]]=round_robin(),
                actor_count=0, batch_size=1, queue_size=3):
 
@@ -224,7 +225,7 @@ def distribute(
 
     def _ray_pipe(source):
         def on_subscribe(observer, scheduler):
-            actors = [ActorState(pipeline, batch_size, queue_size) for _ in range(actor_count)]
+            actors = [ActorState(pipeline_factory, batch_size, queue_size) for _ in range(actor_count)]
             completed = [False for _ in range(actor_count)]
             selector_state = None
             actor_index = None
