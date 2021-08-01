@@ -22,7 +22,7 @@ install_requires = [
 
 setup(
     name="rxray",
-    version='0.0.0',
+    version='1.0.0',
     url='https://github.com/maki-nage/rxray.git',
     license='MIT',
     description="RxPY operators to distribute computations with ray",
