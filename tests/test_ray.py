@@ -86,7 +86,7 @@ def test_key_partitioning():
     result = rx.from_(data).pipe(
         rxray.distribute(            
             lambda: rx.pipe(ops.map(lambda i: (i[0], i[1]*2))),
-            partition_selector=rxray.partition_by_key(lambda i: i[0]),
+            actor_selector=rxray.partition_by_key(lambda i: i[0]),
         ),
         ops.to_list(),
     ).run()

@@ -159,8 +159,30 @@ def compute_actor_count(requested_actor_count):
 
 def distribute(
                pipeline_factory,
-               partition_selector: Callable[[Any, int, Any], Tuple[int, Any]]=round_robin(),
+               actor_selector: Callable[[Any, int, Any], Tuple[int, Any]]=round_robin(),
                actor_count=0, batch_size=1, queue_size=3):
+    """
+    Distributes the execution of a pipeline on ray actors
+
+    Functionaly, this operators is similar to using directly the pipeline.
+    However computation speed will be faster thanks to parallel computations,
+
+    The round robin selector guarantees global ordering; the ordering of the
+    sink items is the same than the one of the source items.
+    
+    The partition_by_key selector guarantees per key ordering.
+    
+    Args:
+        pipeline_factory: A factory function returning an observable to run on each actor.
+        actor_selector: A function that select the actor to use for each source item.
+        actor_count: The number of actors to use.
+        batch_size: The size of micro batches to send items to the actors. Low values improve latency, high values improve througput.
+        queue_size: Number of inflight micro-batches sent to each actor.
+
+    
+    Returns:
+        An observable where all source items have been processed by the provided pipeline.
+    """
 
     actor_count = compute_actor_count(actor_count)    
 
@@ -188,7 +210,7 @@ def distribute(
                 nonlocal selector_state
                 nonlocal actor_index
 
-                actor_index, selector_state = partition_selector(
+                actor_index, selector_state = actor_selector(
                     selector_state, actor_count, batch_size, i
                 )
                 r = actors[actor_index].push_next(i)
