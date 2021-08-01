@@ -30,8 +30,8 @@ parallelize computations:
     ).subscribe()
 
 
-When the distributed computation is statefull, items can be pinned to an actor
-with a key based selector:
+When the distributed computation is stateful, items can be pinned to an actor
+with a key-based selector:
 
 .. code:: python3
 
