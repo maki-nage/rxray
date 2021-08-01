@@ -85,7 +85,7 @@ class RemotePipeline(object):
 
     def on_completed(self):
         self.subject.on_completed()
-        r = self.item_queue
+        r = list(self.item_queue)
         self.item_queue.clear()
         return r
 

@@ -100,6 +100,33 @@ def test_key_partitioning():
         assert key_result == [(i[0], i[1]*2) for i in key_data]
 
 
+def test_statefull_key_partitioning():
+    data = [(i, j) for i in range(17) for j in range(100)]
+    random.shuffle(data)
+    ray.init()
+
+    result = rx.from_(data).pipe(
+        rxray.distribute(
+            lambda: rx.pipe(
+                ops.group_by(lambda i: i[0]),
+                ops.flat_map(lambda g: g.pipe(
+                    ops.map(lambda i: i[1]),
+                    ops.average(),
+                    ops.map(lambda i: (g.key, i)),
+                ))
+            ),
+            actor_selector=rxray.partition_by_key(lambda i: i[0]),
+        ),
+        ops.to_list(),
+    ).run()
+
+    ray.shutdown()
+
+    # check that items are ordered by key
+    assert len(result) == 17
+    for r in result:
+        assert r[1] == 49.5
+
 def test_completion():
     data = Subject()
     ray.init()

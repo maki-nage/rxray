@@ -41,7 +41,14 @@ with a key based selector:
 
     rx.from_(data).pipe(
         rxray.distribute(
-            lambda: rx.pipe(ops.map(lambda i: (i[0], i[1]*2))),
+            lambda: rx.pipe(
+                ops.group_by(lambda i: i[0]),
+                ops.flat_map(lambda g: g.pipe(
+                    ops.map(lambda i: i[1]),
+                    ops.average(),
+                    ops.map(lambda i: (g.key, i)),
+                ))
+            ),
             actor_selector=rxray.partition_by_key(lambda i: i[0]),
         ),
     ).subscribe()
